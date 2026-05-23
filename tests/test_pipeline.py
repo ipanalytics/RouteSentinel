@@ -27,7 +27,13 @@ def test_run_snapshot_writes_core_outputs(tmp_path) -> None:
     summary = json.loads((tmp_path / "out" / "rpki-summary.json").read_text())
     assert summary["valid"] == 1
     assert summary["invalid"] == 1
+    assert summary["unique_prefixes"] == 2
+    assert summary["unique_prefix_origin_pairs"] == 2
+    assert summary["unique_invalid_prefixes"] == 1
     assert "198.51.100.0/24" in (tmp_path / "out" / "rpki-invalids.csv").read_text()
+    assert "198.51.100.0/24" in (tmp_path / "out" / "route-origin-status.csv").read_text()
+    assert "198.51.100.0/24" in (tmp_path / "out" / "rpki-covered-prefixes.csv").read_text()
+    assert "origin_asn" in (tmp_path / "out" / "top-invalid-asns.csv").read_text()
     assert "rpki-invalid" in (tmp_path / "out" / "suspected-events.jsonl").read_text()
 
 

@@ -26,10 +26,13 @@ def render_stats(
 ) -> str:
     generated_at = updated_at or datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     total = int(summary.get("total_announcements", 0))
+    unique_prefixes = int(summary.get("unique_prefixes", 0))
+    unique_invalid_prefixes = int(summary.get("unique_invalid_prefixes", 0))
     valid = int(summary.get("valid", 0))
     invalid = int(summary.get("invalid", 0))
     not_found = int(summary.get("not_found", 0))
     coverage_ratio = float(summary.get("coverage_ratio", 0))
+    collectors = ", ".join(summary.get("collectors", [])) or "unknown"
     if release_url:
         release_line = f"Release assets: [{run_date}]({release_url})"
     else:
@@ -44,9 +47,12 @@ def render_stats(
             "",
             "| Metric | Value |",
             "| --- | ---: |",
-            f"| Total announcements | {format_int(total)} |",
+            f"| Collectors | {collectors} |",
+            f"| Unique prefixes | {format_int(unique_prefixes)} |",
+            f"| Unique prefix-origin pairs | {format_int(total)} |",
             f"| RPKI valid | {format_int(valid)} |",
             f"| RPKI invalid | {format_int(invalid)} |",
+            f"| Unique invalid prefixes | {format_int(unique_invalid_prefixes)} |",
             f"| RPKI not-found | {format_int(not_found)} |",
             f"| RPKI coverage ratio | {format_percent(coverage_ratio)} |",
             "",

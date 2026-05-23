@@ -16,10 +16,13 @@ def test_update_readme_stats_replaces_marker_block(tmp_path) -> None:
         json.dumps(
             {
                 "total_announcements": 2000,
+                "unique_prefixes": 1500,
+                "unique_invalid_prefixes": 25,
                 "valid": 1200,
                 "invalid": 50,
                 "not_found": 750,
                 "coverage_ratio": 0.6,
+                "collectors": ["rrc00", "rrc01"],
             }
         )
     )
@@ -37,5 +40,8 @@ def test_update_readme_stats_replaces_marker_block(tmp_path) -> None:
     assert "Last successful snapshot: **2026-05-23**" in updated
     assert "[2026-05-23](https://github.com/example/routesentinel/releases/tag/2026-05-23)" in updated
     assert "Release updated: **2026-05-23 13:45 UTC**" in updated
-    assert "| Total announcements | 2,000 |" in updated
+    assert "| Collectors | rrc00, rrc01 |" in updated
+    assert "| Unique prefixes | 1,500 |" in updated
+    assert "| Unique prefix-origin pairs | 2,000 |" in updated
+    assert "| Unique invalid prefixes | 25 |" in updated
     assert "| RPKI coverage ratio | 60.00% |" in updated

@@ -51,13 +51,19 @@ def parse_mrt(mrt_path: Path, output_csv: Path, collector: str, dedupe: bool) ->
 
 
 @main.command("snapshot")
-@click.option("--announcements", required=True, type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--announcements",
+    required=True,
+    multiple=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Normalized announcements CSV. Pass multiple times for multiple collectors.",
+)
 @click.option("--vrps", required=True, type=click.Path(exists=True, path_type=Path))
 @click.option("--out", "output_dir", required=True, type=click.Path(path_type=Path))
-def snapshot(announcements: Path, vrps: Path, output_dir: Path) -> None:
+def snapshot(announcements: tuple[Path, ...], vrps: Path, output_dir: Path) -> None:
     """Build daily RPKI status and suspected-event outputs."""
 
-    run_snapshot(announcements, vrps, output_dir, progress=log_progress)
+    run_snapshot(list(announcements), vrps, output_dir, progress=log_progress)
     click.echo(output_dir)
 
 
