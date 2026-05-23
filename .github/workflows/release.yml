@@ -95,25 +95,6 @@ jobs:
             --out-md out/changelog.md \
             --out-json out/daily-diff.json
 
-      - name: Publish dataset
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.date.outputs.today }}
-          name: RouteSentinel ${{ steps.date.outputs.today }}
-          body_path: out/changelog.md
-          make_latest: true
-          overwrite_files: true
-          fail_on_unmatched_files: true
-          files: |
-            out/rpki-summary.json
-            out/rpki-invalids.csv
-            out/route-origin-status.csv
-            out/rpki-covered-prefixes.csv
-            out/top-invalid-asns.csv
-            out/suspected-events.jsonl
-            out/daily-diff.json
-            out/changelog.md
-
       - name: Sync branch before README update
         run: git pull --rebase origin "${GITHUB_REF_NAME}"
 
@@ -139,3 +120,27 @@ jobs:
             git pull --rebase origin "${GITHUB_REF_NAME}"
             git push
           }
+
+      - name: Recreate release with fresh timestamp
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          target="$(git rev-parse HEAD)"
+          gh release delete "${{ steps.date.outputs.today }}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --cleanup-tag \
+            --yes || true
+          gh release create "${{ steps.date.outputs.today }}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${target}" \
+            --title "RouteSentinel ${{ steps.date.outputs.today }}" \
+            --notes-file out/changelog.md \
+            --latest \
+            out/rpki-summary.json \
+            out/rpki-invalids.csv \
+            out/route-origin-status.csv \
+            out/rpki-covered-prefixes.csv \
+            out/top-invalid-asns.csv \
+            out/suspected-events.jsonl \
+            out/daily-diff.json \
+            out/changelog.md
