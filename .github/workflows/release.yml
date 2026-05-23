@@ -5,6 +5,10 @@ on:
     - cron: "0 6 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: routesentinel-daily-dataset-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -30,7 +34,14 @@ jobs:
 
       - name: Set date
         id: date
-        run: echo "today=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+        run: |
+          today="$(date -u +%F)"
+          generated_at="$(date -u '+%Y-%m-%d %H:%M UTC')"
+          {
+            echo "today=${today}"
+            echo "generated_at=${generated_at}"
+            echo "release_url=https://github.com/${GITHUB_REPOSITORY}/releases/tag/${today}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Restore source cache
         uses: actions/cache@v4
@@ -55,6 +66,8 @@ jobs:
           {
             echo "# RouteSentinel ${{ steps.date.outputs.today }}"
             echo
+            echo "Release updated: ${{ steps.date.outputs.generated_at }}"
+            echo
             echo "Daily RPKI/BGP snapshot generated from RIPE RIS rrc00 and public VRP JSON."
             echo
             cat out/rpki-summary.json
@@ -65,8 +78,38 @@ jobs:
         with:
           tag_name: ${{ steps.date.outputs.today }}
           name: RouteSentinel ${{ steps.date.outputs.today }}
+          body_path: out/changelog.md
+          make_latest: true
+          overwrite_files: true
+          fail_on_unmatched_files: true
           files: |
             out/rpki-summary.json
             out/rpki-invalids.csv
             out/suspected-events.jsonl
             out/changelog.md
+
+      - name: Sync branch before README update
+        run: git pull --rebase origin "${GITHUB_REF_NAME}"
+
+      - name: Update README stats
+        run: |
+          python scripts/update_readme_stats.py \
+            --summary out/rpki-summary.json \
+            --date "${{ steps.date.outputs.today }}" \
+            --release-url "${{ steps.date.outputs.release_url }}" \
+            --updated-at "${{ steps.date.outputs.generated_at }}"
+
+      - name: Commit README stats
+        run: |
+          if git diff --quiet README.md; then
+            echo "README stats unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "Update RouteSentinel snapshot stats"
+          git push || {
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push
+          }
