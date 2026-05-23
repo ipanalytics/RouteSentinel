@@ -80,6 +80,7 @@ def parse_mrt_with_bgpdump(
     output_csv: Path,
     collector: str,
     progress: Progress | None = None,
+    dedupe: bool = True,
 ) -> Path:
     """Convert an MRT RIB dump to normalized CSV using bgpdump.
 
@@ -97,7 +98,10 @@ def parse_mrt_with_bgpdump(
     )
     assert proc.stdout is not None
     lines_seen = 0
+    raw_rows = 0
     rows_written = 0
+    duplicates_skipped = 0
+    seen: set[tuple[str, str, str]] = set()
     with output_csv.open("w", newline="") as out:
         writer = csv.DictWriter(
             out, fieldnames=["prefix", "origin_asn", "as_path", "peer", "collector"]
@@ -106,7 +110,11 @@ def parse_mrt_with_bgpdump(
         for line in proc.stdout:
             lines_seen += 1
             if progress and lines_seen % 100_000 == 0:
-                progress(f"parse progress bgpdump_lines={lines_seen} announcements={rows_written}")
+                progress(
+                    "parse progress "
+                    f"bgpdump_lines={lines_seen} raw_announcements={raw_rows} "
+                    f"unique_announcements={rows_written} duplicates_skipped={duplicates_skipped}"
+                )
             fields = line.rstrip("\n").split("|")
             if len(fields) < 7 or fields[0] != "TABLE_DUMP2":
                 continue
@@ -116,6 +124,12 @@ def parse_mrt_with_bgpdump(
             if not as_path:
                 continue
             origin = as_path.split()[-1].strip("{}").split(",")[0]
+            raw_rows += 1
+            key = (prefix, origin, collector)
+            if dedupe and key in seen:
+                duplicates_skipped += 1
+                continue
+            seen.add(key)
             writer.writerow(
                 {
                     "prefix": prefix,
@@ -129,7 +143,11 @@ def parse_mrt_with_bgpdump(
     if proc.wait() != 0:
         raise RuntimeError(f"bgpdump failed for {mrt_path}")
     if progress:
-        progress(f"parse done bgpdump_lines={lines_seen} announcements={rows_written}")
+        progress(
+            "parse done "
+            f"bgpdump_lines={lines_seen} raw_announcements={raw_rows} "
+            f"unique_announcements={rows_written} duplicates_skipped={duplicates_skipped}"
+        )
     return output_csv
 
 

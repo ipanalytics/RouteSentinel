@@ -7,6 +7,10 @@ announcements, and conservative origin-anomaly signals. It is designed as a batc
 pipeline: no internet scanning, no per-prefix API fan-out, and no dependency on a live
 stream for the v1 dataset.
 
+The default dataset is deduplicated to one observation per `(prefix, origin ASN, collector)`.
+This keeps daily releases focused on route-origin state instead of peer-level duplicate
+visibility rows.
+
 ## Latest Snapshot
 
 <!-- routesentinel-stats:start -->
@@ -121,6 +125,9 @@ routesentinel parse-mrt \
   --collector rrc00
 ```
 
+`parse-mrt` deduplicates by `(prefix, origin ASN, collector)` by default. Use
+`--no-dedupe` only when you explicitly need peer-level visibility rows.
+
 ## Daily Releases
 
 The included workflow at `.github/workflows/release.yml` runs daily at `06:00 UTC` and:
@@ -139,8 +146,8 @@ messages such as:
 
 ```text
 [routesentinel] download progress 250.0 MiB / 800.0 MiB (31.2%)
-[routesentinel] parse progress bgpdump_lines=1000000 announcements=999842
-[routesentinel] validate progress announcements=1000000
+[routesentinel] parse progress bgpdump_lines=1000000 raw_announcements=999999 unique_announcements=120000 duplicates_skipped=879999
+[routesentinel] validate progress rows_seen=1000000 unique_announcements=120000 duplicates_skipped=880000
 ```
 
 ## Output Schemas

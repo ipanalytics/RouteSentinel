@@ -30,10 +30,24 @@ def fetch(url: str, output: Path) -> None:
 @click.argument("mrt_path", type=click.Path(exists=True, path_type=Path))
 @click.argument("output_csv", type=click.Path(path_type=Path))
 @click.option("--collector", required=True, help="Collector label, e.g. rrc00 or route-views2.")
-def parse_mrt(mrt_path: Path, output_csv: Path, collector: str) -> None:
+@click.option(
+    "--dedupe/--no-dedupe",
+    default=True,
+    show_default=True,
+    help="Keep one row per prefix/origin/collector instead of all peer-visible duplicates.",
+)
+def parse_mrt(mrt_path: Path, output_csv: Path, collector: str, dedupe: bool) -> None:
     """Normalize an MRT RIB dump to RouteSentinel CSV."""
 
-    click.echo(parse_mrt_with_bgpdump(mrt_path, output_csv, collector, progress=log_progress))
+    click.echo(
+        parse_mrt_with_bgpdump(
+            mrt_path,
+            output_csv,
+            collector,
+            progress=log_progress,
+            dedupe=dedupe,
+        )
+    )
 
 
 @main.command("snapshot")

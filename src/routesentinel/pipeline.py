@@ -165,6 +165,9 @@ def stream_validate_snapshot(
     origins_by_prefix: dict[str, set[int]] = defaultdict(set)
     invalid_prefixes: set[str] = set()
     invalid_path = output_dir / "rpki-invalids.csv"
+    seen: set[tuple[str, int, str | None]] = set()
+    rows_seen = 0
+    duplicates_skipped = 0
 
     with invalid_path.open("w", newline="") as handle:
         writer = csv.DictWriter(
@@ -179,24 +182,39 @@ def stream_validate_snapshot(
             ],
         )
         writer.writeheader()
-        for count, announcement in enumerate(announcements, start=1):
+        for announcement in announcements:
+            rows_seen += 1
+            key = (announcement.prefix, announcement.origin_asn, announcement.collector)
+            if key in seen:
+                duplicates_skipped += 1
+                if progress and rows_seen % 100_000 == 0:
+                    progress(
+                        "validate progress "
+                        f"rows_seen={rows_seen} unique_announcements={sum(counts.values())} "
+                        f"duplicates_skipped={duplicates_skipped} valid={counts[RpkiStatus.VALID]} "
+                        f"invalid={counts[RpkiStatus.INVALID]} not_found={counts[RpkiStatus.NOT_FOUND]}"
+                    )
+                continue
+            seen.add(key)
             decision = index.validate(announcement)
             counts[decision.status] += 1
             origins_by_prefix[announcement.prefix].add(announcement.origin_asn)
             if decision.status == RpkiStatus.INVALID:
                 invalid_prefixes.add(announcement.prefix)
                 write_invalid_decision(decision, writer)
-            if progress and count % 100_000 == 0:
+            if progress and rows_seen % 100_000 == 0:
                 progress(
                     "validate progress "
-                    f"announcements={count} valid={counts[RpkiStatus.VALID]} "
+                    f"rows_seen={rows_seen} unique_announcements={sum(counts.values())} "
+                    f"duplicates_skipped={duplicates_skipped} valid={counts[RpkiStatus.VALID]} "
                     f"invalid={counts[RpkiStatus.INVALID]} not_found={counts[RpkiStatus.NOT_FOUND]}"
                 )
 
     if progress:
         progress(
             "validate done "
-            f"announcements={sum(counts.values())} valid={counts[RpkiStatus.VALID]} "
+            f"rows_seen={rows_seen} unique_announcements={sum(counts.values())} "
+            f"duplicates_skipped={duplicates_skipped} valid={counts[RpkiStatus.VALID]} "
             f"invalid={counts[RpkiStatus.INVALID]} not_found={counts[RpkiStatus.NOT_FOUND]}"
         )
         progress(f"write start output_dir={output_dir}")
