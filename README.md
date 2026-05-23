@@ -7,19 +7,6 @@ announcements, and conservative origin-anomaly signals. It is designed as a batc
 pipeline: no internet scanning, no per-prefix API fan-out, and no dependency on a live
 stream for the v1 dataset.
 
-## GitHub About
-
-Use this for the repository description:
-
-```text
-Daily route-security snapshots from BGP RIB dumps and RPKI VRPs: coverage, invalids, and origin anomalies.
-```
-
-Suggested repository topics:
-
-```text
-bgp, rpki, roa, vrp, routing-security, route-leaks, bgp-hijacking, mrt, ripe-ris, routeviews, cybersecurity, osint, internet-measurements, python
-```
 
 ## What It Produces
 
