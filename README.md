@@ -14,7 +14,19 @@ visibility rows.
 ## Latest Snapshot
 
 <!-- routesentinel-stats:start -->
-No successful snapshot has been published yet.
+Last successful snapshot: **2026-05-23**
+Release assets: [2026-05-23](https://github.com/ipanalytics/RouteSentinel/releases/tag/2026-05-23)
+Release updated: **2026-05-23 14:12 UTC**
+
+| Metric | Value |
+| --- | ---: |
+| Total announcements | 1,393,739 |
+| RPKI valid | 906,764 |
+| RPKI invalid | 2,250 |
+| RPKI not-found | 484,725 |
+| RPKI coverage ratio | 65.06% |
+
+_This block is updated after the GitHub Release is successfully published._
 <!-- routesentinel-stats:end -->
 
 ## What It Produces
