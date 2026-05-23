@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "routesentinel"
+version = "0.1.0"
+description = "Daily route-security snapshot analyzer for BGP RIB dumps and RPKI VRP JSON."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+  { name = "RouteSentinel maintainers" }
+]
+keywords = [
+  "bgp",
+  "rpki",
+  "roa",
+  "vrp",
+  "routing-security",
+  "mrt",
+  "internet-measurements",
+  "cybersecurity",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: Telecommunications Industry",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Internet",
+  "Topic :: Security",
+  "Topic :: System :: Networking",
+]
+dependencies = [
+  "click>=8.1",
+  "duckdb>=1.0",
+  "polars>=1.0",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6",
+]
+
+[project.scripts]
+routesentinel = "routesentinel.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/routesentinel"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
