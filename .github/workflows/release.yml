@@ -1,0 +1,72 @@
+name: daily-dataset
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install system MRT parser
+        run: sudo apt-get update && sudo apt-get install -y bgpdump
+
+      - name: Install RouteSentinel
+        run: python -m pip install ".[dev]"
+
+      - name: Set date
+        id: date
+        run: echo "today=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore source cache
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: routesentinel-raw-${{ steps.date.outputs.today }}
+
+      - name: Fetch BGP RIB and VRPs
+        run: |
+          mkdir -p data/raw data/normalized out
+          routesentinel fetch https://data.ris.ripe.net/rrc00/latest-bview.gz data/raw/rrc00-latest-bview.gz
+          routesentinel fetch https://console.rpki-client.org/vrps.json data/raw/vrps.json
+
+      - name: Parse MRT
+        run: routesentinel parse-mrt data/raw/rrc00-latest-bview.gz data/normalized/rrc00.csv --collector rrc00
+
+      - name: Build snapshot
+        run: routesentinel snapshot --announcements data/normalized/rrc00.csv --vrps data/raw/vrps.json --out out
+
+      - name: Test
+        run: pytest
+
+      - name: Write changelog
+        run: |
+          {
+            echo "# RouteSentinel ${{ steps.date.outputs.today }}"
+            echo
+            echo "Daily RPKI/BGP snapshot generated from RIPE RIS rrc00 and public VRP JSON."
+            echo
+            cat out/rpki-summary.json
+          } > out/changelog.md
+
+      - name: Publish dataset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.date.outputs.today }}
+          name: RouteSentinel ${{ steps.date.outputs.today }}
+          files: |
+            out/rpki-summary.json
+            out/rpki-invalids.csv
+            out/suspected-events.jsonl
+            out/changelog.md
