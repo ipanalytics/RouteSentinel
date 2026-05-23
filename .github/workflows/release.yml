@@ -36,9 +36,11 @@ jobs:
         id: date
         run: |
           today="$(date -u +%F)"
+          previous="$(date -u -d "${today} -1 day" +%F)"
           generated_at="$(date -u '+%Y-%m-%d %H:%M UTC')"
           {
             echo "today=${today}"
+            echo "previous=${previous}"
             echo "generated_at=${generated_at}"
             echo "release_url=https://github.com/${GITHUB_REPOSITORY}/releases/tag/${today}"
           } >> "$GITHUB_OUTPUT"
@@ -53,25 +55,45 @@ jobs:
         run: |
           mkdir -p data/raw data/normalized out
           routesentinel fetch https://data.ris.ripe.net/rrc00/latest-bview.gz data/raw/rrc00-latest-bview.gz
+          routesentinel fetch https://data.ris.ripe.net/rrc01/latest-bview.gz data/raw/rrc01-latest-bview.gz
+          routesentinel fetch https://data.ris.ripe.net/rrc10/latest-bview.gz data/raw/rrc10-latest-bview.gz
           routesentinel fetch https://console.rpki-client.org/vrps.json data/raw/vrps.json
 
       - name: Parse MRT
-        run: routesentinel parse-mrt data/raw/rrc00-latest-bview.gz data/normalized/rrc00.csv --collector rrc00
+        run: |
+          routesentinel parse-mrt data/raw/rrc00-latest-bview.gz data/normalized/rrc00.csv --collector rrc00
+          routesentinel parse-mrt data/raw/rrc01-latest-bview.gz data/normalized/rrc01.csv --collector rrc01
+          routesentinel parse-mrt data/raw/rrc10-latest-bview.gz data/normalized/rrc10.csv --collector rrc10
 
       - name: Build snapshot
-        run: routesentinel snapshot --announcements data/normalized/rrc00.csv --vrps data/raw/vrps.json --out out
-
-      - name: Write changelog
         run: |
-          {
-            echo "# RouteSentinel ${{ steps.date.outputs.today }}"
-            echo
-            echo "Release updated: ${{ steps.date.outputs.generated_at }}"
-            echo
-            echo "Daily RPKI/BGP snapshot generated from RIPE RIS rrc00 and public VRP JSON."
-            echo
-            cat out/rpki-summary.json
-          } > out/changelog.md
+          routesentinel snapshot \
+            --announcements data/normalized/rrc00.csv \
+            --announcements data/normalized/rrc01.csv \
+            --announcements data/normalized/rrc10.csv \
+            --vrps data/raw/vrps.json \
+            --out out
+
+      - name: Download previous release state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p previous
+          gh release download "${{ steps.date.outputs.previous }}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern route-origin-status.csv \
+            --dir previous || true
+
+      - name: Build changelog
+        run: |
+          python scripts/build_changelog.py \
+            --current-status out/route-origin-status.csv \
+            --current-summary out/rpki-summary.json \
+            --previous-status previous/route-origin-status.csv \
+            --date "${{ steps.date.outputs.today }}" \
+            --updated-at "${{ steps.date.outputs.generated_at }}" \
+            --out-md out/changelog.md \
+            --out-json out/daily-diff.json
 
       - name: Publish dataset
         uses: softprops/action-gh-release@v2
@@ -85,7 +107,11 @@ jobs:
           files: |
             out/rpki-summary.json
             out/rpki-invalids.csv
+            out/route-origin-status.csv
+            out/rpki-covered-prefixes.csv
+            out/top-invalid-asns.csv
             out/suspected-events.jsonl
+            out/daily-diff.json
             out/changelog.md
 
       - name: Sync branch before README update
