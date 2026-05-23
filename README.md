@@ -7,6 +7,11 @@ announcements, and conservative origin-anomaly signals. It is designed as a batc
 pipeline: no internet scanning, no per-prefix API fan-out, and no dependency on a live
 stream for the v1 dataset.
 
+## Latest Snapshot
+
+<!-- routesentinel-stats:start -->
+No successful snapshot has been published yet.
+<!-- routesentinel-stats:end -->
 
 ## What It Produces
 
