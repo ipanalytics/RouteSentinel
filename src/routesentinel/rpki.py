@@ -13,20 +13,23 @@ class VrpIndex:
     """Small in-memory VRP index optimized for batch snapshot validation."""
 
     def __init__(self, vrps: Iterable[Vrp]) -> None:
-        self._by_version = {4: defaultdict(list), 6: defaultdict(list)}
+        self._by_version = {4: defaultdict(dict), 6: defaultdict(dict)}
         for vrp in vrps:
             network = vrp.network
-            self._by_version[network.version][network.prefixlen].append(vrp)
+            by_length = self._by_version[network.version][network.prefixlen]
+            by_length.setdefault(network, []).append(vrp)
 
     def covering(self, prefix: str) -> tuple[Vrp, ...]:
         announced = ip_network(prefix, strict=False)
         matches: list[Vrp] = []
-        for prefix_len, candidates in self._by_version[announced.version].items():
-            if prefix_len > announced.prefixlen:
+        by_length = self._by_version[announced.version]
+        for prefix_len in range(announced.prefixlen, -1, -1):
+            candidates_by_network = by_length.get(prefix_len)
+            if not candidates_by_network:
                 continue
-            for vrp in candidates:
-                vrp_network = vrp.network
-                if announced.subnet_of(vrp_network) and announced.prefixlen <= vrp.max_length:
+            network = announced.supernet(new_prefix=prefix_len)
+            for vrp in candidates_by_network.get(network, []):
+                if announced.prefixlen <= vrp.max_length:
                     matches.append(vrp)
         return tuple(matches)
 
@@ -58,4 +61,3 @@ def load_vrps_json(path: str | Path) -> list[Vrp]:
             )
         )
     return vrps
-

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import gzip
+import re
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
@@ -14,6 +15,7 @@ from routesentinel.models import BgpAnnouncement, RpkiDecision
 
 DEFAULT_USER_AGENT = "RouteSentinel/0.1"
 Progress = Callable[[str], None]
+AS_PATH_NUMBER = re.compile(r"\d+")
 
 
 def download_file(
@@ -51,20 +53,26 @@ def download_file(
     return output
 
 
-def read_announcements_csv(path: str | Path) -> list[BgpAnnouncement]:
+def parse_as_path(value: str) -> tuple[int, ...]:
+    return tuple(int(match) for match in AS_PATH_NUMBER.findall(value or ""))
+
+
+def iter_announcements_csv(path: str | Path) -> Iterable[BgpAnnouncement]:
     handle = gzip.open(path, "rt", newline="") if str(path).endswith(".gz") else open(path, newline="")
     with handle:
         reader = csv.DictReader(handle)
-        return [
-            BgpAnnouncement(
+        for row in reader:
+            yield BgpAnnouncement(
                 prefix=row["prefix"],
                 origin_asn=int(str(row["origin_asn"]).upper().removeprefix("AS")),
-                as_path=tuple(int(item) for item in row.get("as_path", "").split() if item),
+                as_path=parse_as_path(row.get("as_path", "")),
                 peer=row.get("peer") or None,
                 collector=row.get("collector") or None,
             )
-            for row in reader
-        ]
+
+
+def read_announcements_csv(path: str | Path) -> list[BgpAnnouncement]:
+    return list(iter_announcements_csv(path))
 
 
 def parse_mrt_with_bgpdump(
