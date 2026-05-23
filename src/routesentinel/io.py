@@ -5,23 +5,49 @@ import gzip
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Callable
 
 import requests
 
 from routesentinel.models import BgpAnnouncement, RpkiDecision
 
 
-DEFAULT_USER_AGENT = "RouteSentinel/0.1 (+https://github.com/your-org/routesentinel)"
+DEFAULT_USER_AGENT = "RouteSentinel/0.1"
+Progress = Callable[[str], None]
 
 
-def download_file(url: str, output: Path, user_agent: str = DEFAULT_USER_AGENT) -> Path:
+def download_file(
+    url: str,
+    output: Path,
+    user_agent: str = DEFAULT_USER_AGENT,
+    progress: Progress | None = None,
+) -> Path:
     output.parent.mkdir(parents=True, exist_ok=True)
+    if progress:
+        progress(f"download start url={url} output={output}")
     with requests.get(url, headers={"User-Agent": user_agent}, stream=True, timeout=120) as resp:
         resp.raise_for_status()
+        content_length = int(resp.headers.get("content-length", "0") or 0)
+        downloaded = 0
+        next_report = 0
         with output.open("wb") as handle:
             for chunk in resp.iter_content(chunk_size=1024 * 1024):
                 if chunk:
                     handle.write(chunk)
+                    downloaded += len(chunk)
+                    if progress and downloaded >= next_report:
+                        if content_length:
+                            percent = downloaded / content_length * 100
+                            progress(
+                                "download progress "
+                                f"{downloaded / 1024 / 1024:.1f} MiB / "
+                                f"{content_length / 1024 / 1024:.1f} MiB ({percent:.1f}%)"
+                            )
+                        else:
+                            progress(f"download progress {downloaded / 1024 / 1024:.1f} MiB")
+                        next_report = downloaded + 25 * 1024 * 1024
+    if progress:
+        progress(f"download done bytes={downloaded} output={output}")
     return output
 
 
@@ -41,7 +67,12 @@ def read_announcements_csv(path: str | Path) -> list[BgpAnnouncement]:
         ]
 
 
-def parse_mrt_with_bgpdump(mrt_path: Path, output_csv: Path, collector: str) -> Path:
+def parse_mrt_with_bgpdump(
+    mrt_path: Path,
+    output_csv: Path,
+    collector: str,
+    progress: Progress | None = None,
+) -> Path:
     """Convert an MRT RIB dump to normalized CSV using bgpdump.
 
     The parser expects bgpdump to be installed on the runner. It streams bgpdump's
@@ -49,18 +80,25 @@ def parse_mrt_with_bgpdump(mrt_path: Path, output_csv: Path, collector: str) -> 
     """
 
     output_csv.parent.mkdir(parents=True, exist_ok=True)
+    if progress:
+        progress(f"parse start mrt={mrt_path} collector={collector} output={output_csv}")
     proc = subprocess.Popen(
         ["bgpdump", "-m", str(mrt_path)],
         stdout=subprocess.PIPE,
         text=True,
     )
     assert proc.stdout is not None
+    lines_seen = 0
+    rows_written = 0
     with output_csv.open("w", newline="") as out:
         writer = csv.DictWriter(
             out, fieldnames=["prefix", "origin_asn", "as_path", "peer", "collector"]
         )
         writer.writeheader()
         for line in proc.stdout:
+            lines_seen += 1
+            if progress and lines_seen % 100_000 == 0:
+                progress(f"parse progress bgpdump_lines={lines_seen} announcements={rows_written}")
             fields = line.rstrip("\n").split("|")
             if len(fields) < 7 or fields[0] != "TABLE_DUMP2":
                 continue
@@ -79,8 +117,11 @@ def parse_mrt_with_bgpdump(mrt_path: Path, output_csv: Path, collector: str) -> 
                     "collector": collector,
                 }
             )
+            rows_written += 1
     if proc.wait() != 0:
         raise RuntimeError(f"bgpdump failed for {mrt_path}")
+    if progress:
+        progress(f"parse done bgpdump_lines={lines_seen} announcements={rows_written}")
     return output_csv
 
 
@@ -113,4 +154,3 @@ def write_invalids_csv(decisions: Iterable[RpkiDecision], output: Path) -> Path:
                 }
             )
     return output
-

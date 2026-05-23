@@ -2,16 +2,39 @@ from __future__ import annotations
 
 import json
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from pathlib import Path
 
 from routesentinel.io import read_announcements_csv, write_invalids_csv
 from routesentinel.models import BgpAnnouncement, RpkiDecision, RpkiStatus
 from routesentinel.rpki import VrpIndex, load_vrps_json
 
+Progress = Callable[[str], None]
 
-def validate_snapshot(announcements: list[BgpAnnouncement], vrp_path: Path) -> list[RpkiDecision]:
-    index = VrpIndex(load_vrps_json(vrp_path))
-    return [index.validate(announcement) for announcement in announcements]
+
+def validate_snapshot(
+    announcements: list[BgpAnnouncement],
+    vrp_path: Path,
+    progress: Progress | None = None,
+) -> list[RpkiDecision]:
+    if progress:
+        progress(f"vrp load start path={vrp_path}")
+    vrps = load_vrps_json(vrp_path)
+    if progress:
+        progress(f"vrp load done vrps={len(vrps)}")
+        progress("vrp index build start")
+    index = VrpIndex(vrps)
+    if progress:
+        progress("vrp index build done")
+
+    decisions: list[RpkiDecision] = []
+    for count, announcement in enumerate(announcements, start=1):
+        decisions.append(index.validate(announcement))
+        if progress and count % 100_000 == 0:
+            progress(f"validate progress announcements={count}")
+    if progress:
+        progress(f"validate done announcements={len(decisions)}")
+    return decisions
 
 
 def write_summary(decisions: list[RpkiDecision], output: Path) -> Path:
@@ -62,10 +85,22 @@ def write_suspected_events(decisions: list[RpkiDecision], output: Path) -> Path:
     return output
 
 
-def run_snapshot(announcements_csv: Path, vrp_json: Path, output_dir: Path) -> None:
+def run_snapshot(
+    announcements_csv: Path,
+    vrp_json: Path,
+    output_dir: Path,
+    progress: Progress | None = None,
+) -> None:
+    if progress:
+        progress(f"announcements load start path={announcements_csv}")
     announcements = read_announcements_csv(announcements_csv)
-    decisions = validate_snapshot(announcements, vrp_json)
+    if progress:
+        progress(f"announcements load done announcements={len(announcements)}")
+    decisions = validate_snapshot(announcements, vrp_json, progress=progress)
+    if progress:
+        progress(f"write start output_dir={output_dir}")
     write_invalids_csv(decisions, output_dir / "rpki-invalids.csv")
     write_summary(decisions, output_dir / "rpki-summary.json")
     write_suspected_events(decisions, output_dir / "suspected-events.jsonl")
-
+    if progress:
+        progress("write done files=rpki-invalids.csv,rpki-summary.json,suspected-events.jsonl")

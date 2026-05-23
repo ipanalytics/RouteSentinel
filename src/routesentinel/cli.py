@@ -8,6 +8,10 @@ from routesentinel.io import download_file, parse_mrt_with_bgpdump
 from routesentinel.pipeline import run_snapshot
 
 
+def log_progress(message: str) -> None:
+    click.echo(f"[routesentinel] {message}", err=True)
+
+
 @click.group()
 def main() -> None:
     """RouteSentinel daily route-security dataset builder."""
@@ -19,7 +23,7 @@ def main() -> None:
 def fetch(url: str, output: Path) -> None:
     """Download a source dump with a responsible User-Agent."""
 
-    click.echo(download_file(url, output))
+    click.echo(download_file(url, output, progress=log_progress))
 
 
 @main.command("parse-mrt")
@@ -29,7 +33,7 @@ def fetch(url: str, output: Path) -> None:
 def parse_mrt(mrt_path: Path, output_csv: Path, collector: str) -> None:
     """Normalize an MRT RIB dump to RouteSentinel CSV."""
 
-    click.echo(parse_mrt_with_bgpdump(mrt_path, output_csv, collector))
+    click.echo(parse_mrt_with_bgpdump(mrt_path, output_csv, collector, progress=log_progress))
 
 
 @main.command("snapshot")
@@ -39,10 +43,9 @@ def parse_mrt(mrt_path: Path, output_csv: Path, collector: str) -> None:
 def snapshot(announcements: Path, vrps: Path, output_dir: Path) -> None:
     """Build daily RPKI status and suspected-event outputs."""
 
-    run_snapshot(announcements, vrps, output_dir)
+    run_snapshot(announcements, vrps, output_dir, progress=log_progress)
     click.echo(output_dir)
 
 
 if __name__ == "__main__":
     main()
-

@@ -142,6 +142,15 @@ The included workflow at `.github/workflows/release.yml` runs daily at `06:00 UT
 For broader visibility, add more collectors and merge their normalized CSV outputs before
 running `routesentinel snapshot`.
 
+Long-running CLI commands print progress to stderr. In GitHub Actions logs you will see
+messages such as:
+
+```text
+[routesentinel] download progress 250.0 MiB / 800.0 MiB (31.2%)
+[routesentinel] parse progress bgpdump_lines=1000000 announcements=999842
+[routesentinel] validate progress announcements=1000000
+```
+
 ## Output Schemas
 
 `rpki-summary.json`:
