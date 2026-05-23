@@ -25,6 +25,9 @@ jobs:
       - name: Install RouteSentinel
         run: python -m pip install ".[dev]"
 
+      - name: Test
+        run: pytest
+
       - name: Set date
         id: date
         run: echo "today=$(date -u +%F)" >> "$GITHUB_OUTPUT"
@@ -46,9 +49,6 @@ jobs:
 
       - name: Build snapshot
         run: routesentinel snapshot --announcements data/normalized/rrc00.csv --vrps data/raw/vrps.json --out out
-
-      - name: Test
-        run: pytest
 
       - name: Write changelog
         run: |
