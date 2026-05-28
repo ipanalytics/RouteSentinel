@@ -7,6 +7,10 @@ announcements, and conservative origin-anomaly signals. It is designed as a batc
 pipeline: no internet scanning, no per-prefix API fan-out, and no dependency on a live
 stream for the v1 dataset.
 
+<p align="center">
+  <img src="./site/banner.png" alt="Tor Radar" width="100%">
+</p>
+
 The default dataset is deduplicated to unique `(prefix, origin ASN)` route-origin pairs
 and records which collectors saw each pair. This keeps daily releases focused on route-origin
 state instead of peer-level duplicate visibility rows.
