@@ -8,7 +8,7 @@ pipeline: no internet scanning, no per-prefix API fan-out, and no dependency on 
 stream for the v1 dataset.
 
 <p align="center">
-  <img src="./site/banner.png" alt="Tor Radar" width="100%">
+  <img src="./site/banner.png" alt="Daily route-origin security snapshots from public BGP RIB dumps and validated RPKI VRPs." width="100%">
 </p>
 
 The default dataset is deduplicated to unique `(prefix, origin ASN)` route-origin pairs
