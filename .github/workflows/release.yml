@@ -42,7 +42,7 @@ jobs:
             echo "today=${today}"
             echo "previous=${previous}"
             echo "generated_at=${generated_at}"
-            echo "release_url=https://github.com/${GITHUB_REPOSITORY}/releases/tag/${today}"
+            echo "release_url=https://github.com/${GITHUB_REPOSITORY}/releases/tag/data-current"
           } >> "$GITHUB_OUTPUT"
 
       - name: Restore source cache
@@ -79,7 +79,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p previous
-          gh release download "${{ steps.date.outputs.previous }}" \
+          gh release download "data-current" \
             --repo "${GITHUB_REPOSITORY}" \
             --pattern route-origin-status.csv \
             --dir previous || true
@@ -121,19 +121,19 @@ jobs:
             git push
           }
 
-      - name: Recreate release with fresh timestamp
+      - name: Recreate rolling release (data-current)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           target="$(git rev-parse HEAD)"
-          gh release delete "${{ steps.date.outputs.today }}" \
+          gh release delete "data-current" \
             --repo "${GITHUB_REPOSITORY}" \
             --cleanup-tag \
             --yes || true
-          gh release create "${{ steps.date.outputs.today }}" \
+          gh release create "data-current" \
             --repo "${GITHUB_REPOSITORY}" \
             --target "${target}" \
-            --title "RouteSentinel ${{ steps.date.outputs.today }}" \
+            --title "RouteSentinel snapshot ${{ steps.date.outputs.today }}" \
             --notes-file out/changelog.md \
             --latest \
             out/rpki-summary.json \
