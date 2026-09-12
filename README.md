@@ -1,5 +1,7 @@
 # RouteSentinel
 
+_Русская версия: [README.ru.md](README.ru.md)_
+
 Daily route-origin security snapshots from public BGP RIB dumps and validated RPKI VRPs.
 
 RouteSentinel builds an auditable dataset for RPKI coverage, RPKI-invalid route
