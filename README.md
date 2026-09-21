@@ -20,19 +20,19 @@ state instead of peer-level duplicate visibility rows.
 ## Latest Snapshot
 
 <!-- routesentinel-stats:start -->
-Last successful snapshot: **2026-09-20**
-Release assets: [2026-09-20](https://github.com/ipanalytics/RouteSentinel/releases/tag/data-current)
-Release updated: **2026-09-20 10:44 UTC**
+Last successful snapshot: **2026-09-21**
+Release assets: [2026-09-21](https://github.com/ipanalytics/RouteSentinel/releases/tag/data-current)
+Release updated: **2026-09-21 12:08 UTC**
 
 | Metric | Value |
 | --- | ---: |
 | Collectors | rrc00, rrc01, rrc10 |
-| Unique prefixes | 1,431,815 |
-| Unique prefix-origin pairs | 1,441,541 |
-| RPKI valid | 1,034,241 |
-| RPKI invalid | 3,448 |
-| Unique invalid prefixes | 3,431 |
-| RPKI not-found | 403,852 |
+| Unique prefixes | 1,432,533 |
+| Unique prefix-origin pairs | 1,442,564 |
+| RPKI valid | 1,035,057 |
+| RPKI invalid | 3,476 |
+| Unique invalid prefixes | 3,458 |
+| RPKI not-found | 404,031 |
 | RPKI coverage ratio | 71.75% |
 
 _This block is updated after the GitHub Release is successfully published._
