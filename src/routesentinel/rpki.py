@@ -9,6 +9,10 @@ from typing import Iterable
 from routesentinel.models import BgpAnnouncement, RpkiDecision, RpkiStatus, Vrp
 
 
+class VrpFileError(ValueError):
+    """The VRP dump is unreadable or truncated (usually a short download)."""
+
+
 class VrpIndex:
     """Small in-memory VRP index optimized for batch snapshot validation."""
 
@@ -43,7 +47,15 @@ class VrpIndex:
 
 
 def load_vrps_json(path: str | Path) -> list[Vrp]:
-    data = json.loads(Path(path).read_text())
+    source = Path(path)
+    raw = source.read_text()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise VrpFileError(
+            f"{source} is not a complete VRP dump ({source.stat().st_size} bytes): {exc}. "
+            "Re-fetch the source before building a snapshot."
+        ) from exc
     rows = data.get("roas", data if isinstance(data, list) else [])
     vrps: list[Vrp] = []
     for row in rows:

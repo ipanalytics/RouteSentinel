@@ -54,10 +54,10 @@ jobs:
       - name: Fetch BGP RIB and VRPs
         run: |
           mkdir -p data/raw data/normalized out
-          routesentinel fetch https://data.ris.ripe.net/rrc00/latest-bview.gz data/raw/rrc00-latest-bview.gz
-          routesentinel fetch https://data.ris.ripe.net/rrc01/latest-bview.gz data/raw/rrc01-latest-bview.gz
-          routesentinel fetch https://data.ris.ripe.net/rrc10/latest-bview.gz data/raw/rrc10-latest-bview.gz
-          routesentinel fetch https://console.rpki-client.org/vrps.json data/raw/vrps.json
+          routesentinel fetch --retries 3 https://data.ris.ripe.net/rrc00/latest-bview.gz data/raw/rrc00-latest-bview.gz
+          routesentinel fetch --retries 3 https://data.ris.ripe.net/rrc01/latest-bview.gz data/raw/rrc01-latest-bview.gz
+          routesentinel fetch --retries 3 https://data.ris.ripe.net/rrc10/latest-bview.gz data/raw/rrc10-latest-bview.gz
+          routesentinel fetch --retries 3 https://console.rpki-client.org/vrps.json data/raw/vrps.json
 
       - name: Parse MRT
         run: |

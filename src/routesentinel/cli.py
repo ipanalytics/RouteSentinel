@@ -4,7 +4,7 @@ from pathlib import Path
 
 import click
 
-from routesentinel.io import download_file, parse_mrt_with_bgpdump
+from routesentinel.io import DEFAULT_RETRIES, download_file, parse_mrt_with_bgpdump
 from routesentinel.pipeline import run_snapshot
 
 
@@ -20,10 +20,21 @@ def main() -> None:
 @main.command()
 @click.argument("url")
 @click.argument("output", type=click.Path(path_type=Path))
-def fetch(url: str, output: Path) -> None:
-    """Download a source dump with a responsible User-Agent."""
+@click.option(
+    "--retries",
+    default=DEFAULT_RETRIES,
+    show_default=True,
+    type=click.IntRange(min=1),
+    help="Attempts allowed for a transient failure (short read, reset connection).",
+)
+def fetch(url: str, output: Path, retries: int) -> None:
+    """Download a source dump with a responsible User-Agent.
 
-    click.echo(download_file(url, output, progress=log_progress))
+    The file is written through ``<output>.part`` and only replaces the target once the
+    byte count matches Content-Length (and, for .json dumps, the document actually ends).
+    """
+
+    click.echo(download_file(url, output, progress=log_progress, retries=retries))
 
 
 @main.command("parse-mrt")
