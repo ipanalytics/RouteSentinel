@@ -50,12 +50,17 @@ def _fetch_once(
     partial = output.with_name(output.name + ".part")
     downloaded = 0
     content_length = 0
+    content_encoding = ""
     try:
         with requests.get(
-            url, headers={"User-Agent": user_agent}, stream=True, timeout=120
+            url,
+            headers={"User-Agent": user_agent, "Accept-Encoding": "identity"},
+            stream=True,
+            timeout=120,
         ) as resp:
             resp.raise_for_status()
             content_length = int(resp.headers.get("content-length", "0") or 0)
+            content_encoding = (resp.headers.get("content-encoding") or "").strip().lower()
             next_report = 0
             with partial.open("wb") as handle:
                 for chunk in resp.iter_content(chunk_size=1024 * 1024):
@@ -77,9 +82,16 @@ def _fetch_once(
                             next_report = downloaded + 25 * 1024 * 1024
                 handle.flush()
                 os.fsync(handle.fileno())
-        if content_length and downloaded != content_length:
+        # A CDN can gzip the body behind our back: Content-Length then counts compressed
+        # bytes while requests hands us the decoded stream, so the length equality only
+        # means something for identity responses. The JSON tail check below still runs.
+        if content_length and not content_encoding and downloaded != content_length:
             raise DownloadIntegrityError(
                 f"short read for {url}: {downloaded} of {content_length} bytes"
+            )
+        if content_encoding and not downloaded:
+            raise DownloadIntegrityError(
+                f"empty body for {url} (content-encoding={content_encoding})"
             )
         if output.suffix.lower() == ".json" and not _json_tail_is_closed(partial):
             raise DownloadIntegrityError(
@@ -91,7 +103,10 @@ def _fetch_once(
         raise
     os.replace(partial, output)
     if progress:
-        progress(f"download done bytes={downloaded} output={output}")
+        progress(
+            f"download done bytes={downloaded} encoding={content_encoding or 'identity'} "
+            f"output={output}"
+        )
     return output
 
 

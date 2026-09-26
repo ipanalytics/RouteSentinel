@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import http.server
 import json
 import threading
@@ -58,6 +59,16 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         elif route == "/cut-json":
             # honest Content-Length, but the JSON document never closes
             self._send(PAYLOAD[:20])
+        elif route == "/gzipped":
+            # CDN behaviour: the body is gzipped, so Content-Length counts compressed bytes
+            compressed = gzip.compress(PAYLOAD)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Content-Length", str(len(compressed)))
+            self.end_headers()
+            self.wfile.write(compressed)
+            self.wfile.flush()
         elif route == "/flaky":
             if state.hits[route] == 1:
                 self._send(PAYLOAD[:12], announced=len(PAYLOAD) + 64)
@@ -139,6 +150,18 @@ def test_client_errors_are_not_retried(tmp_path: Path, base_url):
         io.download_file(f"{url}/missing", target, retries=3)
 
     assert server.hits["/missing"] == 1
+
+
+def test_compressed_body_is_not_read_as_a_short_read(tmp_path: Path, base_url):
+    """Regression: rpki-client.org serves vrps.json gzipped, so bytes on the wire != decoded size."""
+
+    url, server = base_url
+    target = tmp_path / "vrps.json"
+
+    io.download_file(f"{url}/gzipped", target, retries=1)
+
+    assert server.hits["/gzipped"] == 1, "a compressed body is a success, not a retry loop"
+    assert target.read_bytes() == PAYLOAD
 
 
 def test_vrp_loader_explains_truncated_dump(tmp_path: Path):
